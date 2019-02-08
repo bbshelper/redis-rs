@@ -3,9 +3,9 @@ build:
 
 test:
 	@echo "Testing Connection Type TCP"
-	@REDISRS_SERVER_TYPE=tcp RUST_TEST_THREADS=1 cargo test --features="with-rustc-json"
+	@REDISRS_SERVER_TYPE=tcp RUST_TEST_THREADS=1 cargo test
 	@echo "Testing Connection Type UNIX SOCKETS"
-	@REDISRS_SERVER_TYPE=unix cargo test --features="with-rustc-json uds"
+	@REDISRS_SERVER_TYPE=unix cargo test --features="uds"
 
 test-single: RUST_TEST_THREADS=1
 test-single: test

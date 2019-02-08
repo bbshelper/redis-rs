@@ -7,9 +7,6 @@ use std::hash::Hash;
 use std::io;
 use std::str::{from_utf8, Utf8Error};
 
-#[cfg(feature = "with-rustc-json")]
-use serialize::json;
-
 /// Helper enum that is used in some situations to describe
 /// the behavior of arguments in a numeric context.
 #[derive(PartialEq, Eq, Clone, Debug, Copy)]
@@ -643,14 +640,6 @@ impl<T: ToRedisArgs + Hash + Eq + Ord, V: ToRedisArgs> ToRedisArgs
 	}
 }
 
-#[cfg(feature = "with-rustc-json")]
-impl ToRedisArgs for json::Json {
-	fn write_redis_args(&self, out: &mut Vec<Vec<u8>>) {
-		// XXX: the encode result needs to be handled properly
-		out.push(json::encode(self).unwrap().into_bytes())
-	}
-}
-
 macro_rules! to_redis_args_for_tuple {
     () => ();
     ($($name:ident,)+) => (
@@ -1014,21 +1003,6 @@ impl FromRedisValue for InfoDict {
 	fn from_redis_value(v: &Value) -> RedisResult<InfoDict> {
 		let s: String = from_redis_value(v)?;
 		Ok(InfoDict::new(&s))
-	}
-}
-
-#[cfg(feature = "with-rustc-json")]
-impl FromRedisValue for json::Json {
-	fn from_redis_value(v: &Value) -> RedisResult<json::Json> {
-		let rv = match *v {
-			Value::Data(ref b) => json::Json::from_str(from_utf8(b)?),
-			Value::Status(ref s) => json::Json::from_str(s),
-			_ => invalid_type_error!(v, "Not JSON compatible"),
-		};
-		match rv {
-			Ok(value) => Ok(value),
-			Err(_) => invalid_type_error!(v, "Not valid JSON"),
-		}
 	}
 }
 

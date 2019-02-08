@@ -17,13 +17,11 @@ edition = "2018"
 #git = "https://github.com/servo/rust-url"
 
 [features]
-with-rustc-json = ["rustc-serialize"]
 uds = []
 
 [dependencies]
 sha1 = ">= 0.2, < 0.7"
 url = "1.2"
-rustc-serialize = { version = "0.3.16", optional = true }
 
 [dev-dependencies]
 rand = "0.4"
@@ -33,4 +31,3 @@ bencher = "0.1"
 [[bench]]
 name = "bench_basic"
 harness = false
-

@@ -311,13 +311,6 @@
 
 #![deny(non_camel_case_types)]
 
-#[cfg(feature = "with-rustc-json")]
-pub extern crate rustc_serialize as serialize;
-
-#[doc(hidden)]
-#[cfg(feature = "with-rustc-json")]
-pub use serialize::json::Json;
-
 // public api
 pub use client::Client;
 pub use cmd::{cmd, pack_command, pipe, Cmd, Iter, Pipeline};
