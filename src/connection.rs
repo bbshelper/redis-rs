@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::str::from_utf8;
 use std::time::Duration;
 
-use url;
+use url::Url;
 
 use cmd::{cmd, pipe, Pipeline};
 use parser::Parser;
@@ -27,8 +27,8 @@ static DEFAULT_PORT: u16 = 6379;
 /// This function takes a redis URL string and parses it into a URL
 /// as used by rust-url.  This is necessary as the default parser does
 /// not understand how redis URLs function.
-pub fn parse_redis_url(input: &str) -> Result<url::Url, ()> {
-	match url::Url::parse(input) {
+pub fn parse_redis_url(input: &str) -> Result<Url, ()> {
+	match Url::parse(input) {
 		Ok(result) => match result.scheme() {
 			"redis" | "redis+unix" | "unix" => Ok(result),
 			_ => Err(()),
@@ -109,7 +109,7 @@ impl<'a> IntoConnectionInfo for &'a str {
 	}
 }
 
-fn url_to_tcp_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
+fn url_to_tcp_connection_info(url: Url) -> RedisResult<ConnectionInfo> {
 	Ok(ConnectionInfo {
 		addr: Box::new(ConnectionAddr::Tcp(
 			match url.host() {
@@ -138,7 +138,7 @@ fn url_to_tcp_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
 	feature = "with-unix-sockets",
 	feature = "with-system-unix-sockets"
 ))]
-fn url_to_unix_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
+fn url_to_unix_connection_info(url: Url) -> RedisResult<ConnectionInfo> {
 	Ok(ConnectionInfo {
 		addr: Box::new(ConnectionAddr::Unix(unwrap_or!(
 			url.to_file_path().ok(),
@@ -167,14 +167,14 @@ fn url_to_unix_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
 	feature = "with-unix-sockets",
 	feature = "with-system-unix-sockets"
 )))]
-fn url_to_unix_connection_info(_: url::Url) -> RedisResult<ConnectionInfo> {
+fn url_to_unix_connection_info(_: Url) -> RedisResult<ConnectionInfo> {
 	fail!((
 		ErrorKind::InvalidClientConfig,
 		"Unix sockets are not available on this platform."
 	));
 }
 
-impl IntoConnectionInfo for url::Url {
+impl IntoConnectionInfo for Url {
 	fn into_connection_info(self) -> RedisResult<ConnectionInfo> {
 		if self.scheme() == "redis" {
 			url_to_tcp_connection_info(self)
