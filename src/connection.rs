@@ -7,9 +7,9 @@ use std::time::Duration;
 
 use url::Url;
 
-use cmd::{cmd, pipe, Pipeline};
-use parser::Parser;
-use types::{
+use crate::cmd::{cmd, pipe, Pipeline};
+use crate::parser::Parser;
+use crate::types::{
 	from_redis_value, ErrorKind, FromRedisValue, RedisError, RedisResult,
 	ToRedisArgs, Value,
 };
@@ -573,15 +573,15 @@ impl ConnectionLike for Connection {
 ///
 /// ```rust,no_run
 /// # fn do_something() -> redis::RedisResult<()> {
-/// let client = try!(redis::Client::open("redis://127.0.0.1/"));
+/// let client = redis::Client::open("redis://127.0.0.1/")?;
 /// let mut con = client.get_connection()?;
 /// let mut pubsub = con.as_pubsub();
-/// try!(pubsub.subscribe("channel_1"));
-/// try!(pubsub.subscribe("channel_2"));
+/// pubsub.subscribe("channel_1")?;
+/// pubsub.subscribe("channel_2")?;
 ///
 /// loop {
-///     let msg = try!(pubsub.get_message());
-///     let payload : String = try!(msg.get_payload());
+///     let msg = pubsub.get_message()?;
+///     let payload : String = msg.get_payload()?;
 ///     println!("channel '{}': {}", msg.get_channel_name(), payload);
 /// }
 /// # }
@@ -747,12 +747,12 @@ impl Msg {
 /// # let client = redis::Client::open("redis://127.0.0.1/").unwrap();
 /// # let con = client.get_connection().unwrap();
 /// let key = "the_key";
-/// let (new_val,) : (isize,) = try!(redis::transaction(&con, &[key], |pipe| {
-///     let old_val : isize = try!(con.get(key));
+/// let (new_val,) : (isize,) = redis::transaction(&con, &[key], |pipe| {
+///     let old_val : isize = con.get(key)?;
 ///     pipe
 ///         .set(key, old_val + 1).ignore()
 ///         .get(key).query(&con)
-/// }));
+/// })?;
 /// println!("The incremented number is: {}", new_val);
 /// # Ok(()) }
 /// ```

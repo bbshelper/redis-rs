@@ -1,5 +1,5 @@
-use connection::ConnectionLike;
-use types::{
+use crate::connection::ConnectionLike;
+use crate::types::{
 	from_redis_value, ErrorKind, FromRedisValue, RedisResult, ToRedisArgs,
 	Value,
 };

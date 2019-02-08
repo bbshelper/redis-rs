@@ -1,6 +1,5 @@
+use crate::types::{make_extension_error, ErrorKind, RedisResult, Value};
 use std::io::{BufReader, Read};
-
-use types::{make_extension_error, ErrorKind, RedisResult, Value};
 
 /// The internal redis response parser.
 pub struct Parser<T> {

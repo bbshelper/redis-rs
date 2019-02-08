@@ -367,7 +367,7 @@ pub struct InfoDict {
 /// # fn do_something() -> redis::RedisResult<()> {
 /// # let client = redis::Client::open("redis://127.0.0.1/").unwrap();
 /// # let con = client.get_connection().unwrap();
-/// let info : redis::InfoDict = try!(redis::cmd("INFO").query(&con));
+/// let info : redis::InfoDict = redis::cmd("INFO").query(&con)?;
 /// let role : Option<String> = info.get("role");
 /// # Ok(()) }
 /// ```
@@ -967,8 +967,8 @@ macro_rules! from_redis_value_for_tuple {
                         // this is pretty ugly too.  The { i += 1; i - 1} is rust's
                         // postfix increment :)
                         let mut i = 0;
-                        Ok(($({let $name = (); try!(from_redis_value(
-                             &items[{ i += 1; i - 1 }]))},)*))
+                        Ok(($({let $name = (); from_redis_value(
+                             &items[{ i += 1; i - 1 }])?},)*))
                     }
                     _ => invalid_type_error!(v, "Not a bulk response")
                 }
@@ -991,8 +991,8 @@ macro_rules! from_redis_value_for_tuple {
                 }
                 let mut offset = 0;
                 while offset < items.len() - 1 {
-                    rv.push(($({let $name = (); try!(from_redis_value(
-                         &items[{ offset += 1; offset - 1 }]))},)*));
+                    rv.push(($({let $name = (); from_redis_value(
+                         &items[{ offset += 1; offset - 1 }])?},)*));
                 }
                 Ok(rv)
             }

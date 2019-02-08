@@ -8,6 +8,7 @@ homepage = "https://github.com/mitsuhiko/redis-rs"
 documentation = "http://mitsuhiko.github.io/redis-rs/"
 license = "BSD-3-Clause"
 readme = "README.md"
+edition = "2018"
 
 #[dependencies.sha1]
 #git = "https://github.com/mitsuhiko/rust-sha1.git"

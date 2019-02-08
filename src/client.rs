@@ -1,7 +1,7 @@
-use connection::{
+use crate::connection::{
 	connect, Connection, ConnectionInfo, ConnectionLike, IntoConnectionInfo,
 };
-use types::{RedisResult, Value};
+use crate::types::{RedisResult, Value};
 
 /// The client type.
 #[derive(Debug, Clone)]
