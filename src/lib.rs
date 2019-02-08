@@ -316,8 +316,6 @@ extern crate url;
 
 #[cfg(feature = "with-rustc-json")]
 pub extern crate rustc_serialize as serialize;
-#[cfg(feature = "with-unix-sockets")]
-extern crate unix_socket;
 
 #[doc(hidden)]
 #[cfg(feature = "with-rustc-json")]

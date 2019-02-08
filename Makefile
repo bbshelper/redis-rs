@@ -2,17 +2,10 @@ build:
 	@cargo build
 
 test:
-	@echo "===================================================================="
 	@echo "Testing Connection Type TCP"
-	@echo "===================================================================="
 	@REDISRS_SERVER_TYPE=tcp RUST_TEST_THREADS=1 cargo test --features="with-rustc-json"
-	@echo "Testing Connection Type UNIX"
-	@echo "===================================================================="
-	@REDISRS_SERVER_TYPE=unix cargo test --features="with-rustc-json"
-	@echo "===================================================================="
 	@echo "Testing Connection Type UNIX SOCKETS"
-	@echo "===================================================================="
-	@REDISRS_SERVER_TYPE=unix cargo test --features="with-rustc-json with-unix-sockets"
+	@REDISRS_SERVER_TYPE=unix cargo test --features="with-rustc-json uds"
 
 test-single: RUST_TEST_THREADS=1
 test-single: test

@@ -14,13 +14,8 @@ use types::{
 	ToRedisArgs, Value,
 };
 
-#[cfg(all(
-	feature = "with-system-unix-sockets",
-	not(feature = "with-unix-sockets")
-))]
+#[cfg(feature = "uds")]
 use std::os::unix::net::UnixStream;
-#[cfg(feature = "with-unix-sockets")]
-use unix_socket::UnixStream;
 
 static DEFAULT_PORT: u16 = 6379;
 
@@ -59,16 +54,7 @@ impl ConnectionAddr {
 	pub fn is_supported(&self) -> bool {
 		match *self {
 			ConnectionAddr::Tcp(_, _) => true,
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
-			ConnectionAddr::Unix(_) => true,
-			#[cfg(not(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			)))]
-			ConnectionAddr::Unix(_) => false,
+			ConnectionAddr::Unix(_) => cfg!(feature = "uds"),
 		}
 	}
 }
@@ -134,44 +120,36 @@ fn url_to_tcp_connection_info(url: Url) -> RedisResult<ConnectionInfo> {
 	})
 }
 
-#[cfg(any(
-	feature = "with-unix-sockets",
-	feature = "with-system-unix-sockets"
-))]
 fn url_to_unix_connection_info(url: Url) -> RedisResult<ConnectionInfo> {
-	Ok(ConnectionInfo {
-		addr: Box::new(ConnectionAddr::Unix(unwrap_or!(
-			url.to_file_path().ok(),
-			fail!((ErrorKind::InvalidClientConfig, "Missing path"))
-		))),
-		db: match url
-			.query_pairs()
-			.into_iter()
-			.filter(|&(ref key, _)| key == "db")
-			.next()
-		{
-			Some((_, db)) => unwrap_or!(
-				db.parse::<i64>().ok(),
-				fail!((
-					ErrorKind::InvalidClientConfig,
-					"Invalid database number"
-				))
-			),
-			None => 0,
-		},
-		passwd: url.password().and_then(|pw| Some(pw.to_string())),
-	})
-}
-
-#[cfg(not(any(
-	feature = "with-unix-sockets",
-	feature = "with-system-unix-sockets"
-)))]
-fn url_to_unix_connection_info(_: Url) -> RedisResult<ConnectionInfo> {
-	fail!((
-		ErrorKind::InvalidClientConfig,
-		"Unix sockets are not available on this platform."
-	));
+	if cfg!(feature = "uds") {
+		Ok(ConnectionInfo {
+			addr: Box::new(ConnectionAddr::Unix(unwrap_or!(
+				url.to_file_path().ok(),
+				fail!((ErrorKind::InvalidClientConfig, "Missing path"))
+			))),
+			db: match url
+				.query_pairs()
+				.into_iter()
+				.filter(|&(ref key, _)| key == "db")
+				.next()
+			{
+				Some((_, db)) => unwrap_or!(
+					db.parse::<i64>().ok(),
+					fail!((
+						ErrorKind::InvalidClientConfig,
+						"Invalid database number"
+					))
+				),
+				None => 0,
+			},
+			passwd: url.password().and_then(|pw| Some(pw.to_string())),
+		})
+	} else {
+		fail!((
+			ErrorKind::InvalidClientConfig,
+			"Unix sockets are not available on this platform."
+		));
+	}
 }
 
 impl IntoConnectionInfo for Url {
@@ -194,10 +172,7 @@ struct TcpConnection {
 	open: bool,
 }
 
-#[cfg(any(
-	feature = "with-unix-sockets",
-	feature = "with-system-unix-sockets"
-))]
+#[cfg(feature = "uds")]
 struct UnixConnection {
 	sock: UnixStream,
 	open: bool,
@@ -205,10 +180,7 @@ struct UnixConnection {
 
 enum ActualConnection {
 	Tcp(TcpConnection),
-	#[cfg(any(
-		feature = "with-unix-sockets",
-		feature = "with-system-unix-sockets"
-	))]
+	#[cfg(feature = "uds")]
 	Unix(UnixConnection),
 }
 
@@ -248,25 +220,17 @@ impl ActualConnection {
 					open: true,
 				})
 			}
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ConnectionAddr::Unix(ref path) => ActualConnection::Unix(UnixConnection {
 				sock: UnixStream::connect(path)?,
 				open: true,
 			}),
-			#[cfg(not(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			)))]
-			ConnectionAddr::Unix(ref path) => {
-				fail!((
-					ErrorKind::InvalidClientConfig,
-					"Cannot connect to unix sockets \
-					 on this platform"
-				));
-			}
+			#[cfg(not(feature = "uds"))]
+			ConnectionAddr::Unix(_) => fail!((
+				ErrorKind::InvalidClientConfig,
+				"Cannot connect to unix sockets \
+				 on this platform"
+			)),
 		})
 	}
 
@@ -288,10 +252,7 @@ impl ActualConnection {
 					Ok(_) => Ok(Value::Okay),
 				}
 			}
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ActualConnection::Unix(ref mut connection) => {
 				let result = connection
 					.sock
@@ -315,10 +276,7 @@ impl ActualConnection {
 			ActualConnection::Tcp(TcpConnection { ref mut reader, .. }) => {
 				reader as &mut Read
 			}
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ActualConnection::Unix(UnixConnection { ref mut sock, .. }) => {
 				sock as &mut Read
 			}
@@ -334,10 +292,7 @@ impl ActualConnection {
 						.shutdown(net::Shutdown::Both);
 					connection.open = false;
 				}
-				#[cfg(any(
-					feature = "with-unix-sockets",
-					feature = "with-system-unix-sockets"
-				))]
+				#[cfg(feature = "uds")]
 				ActualConnection::Unix(ref mut connection) => {
 					let _ = connection.sock.shutdown(net::Shutdown::Both);
 					connection.open = false;
@@ -353,10 +308,7 @@ impl ActualConnection {
 			ActualConnection::Tcp(TcpConnection { ref reader, .. }) => {
 				reader.get_ref().set_write_timeout(dur)?;
 			}
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ActualConnection::Unix(UnixConnection { ref sock, .. }) => {
 				sock.set_write_timeout(dur)?;
 			}
@@ -369,10 +321,7 @@ impl ActualConnection {
 			ActualConnection::Tcp(TcpConnection { ref reader, .. }) => {
 				reader.get_ref().set_read_timeout(dur)?;
 			}
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ActualConnection::Unix(UnixConnection { ref sock, .. }) => {
 				sock.set_read_timeout(dur)?;
 			}
@@ -383,10 +332,7 @@ impl ActualConnection {
 	pub fn is_open(&self) -> bool {
 		match *self {
 			ActualConnection::Tcp(TcpConnection { open, .. }) => open,
-			#[cfg(any(
-				feature = "with-unix-sockets",
-				feature = "with-system-unix-sockets"
-			))]
+			#[cfg(feature = "uds")]
 			ActualConnection::Unix(UnixConnection { open, .. }) => open,
 		}
 	}
