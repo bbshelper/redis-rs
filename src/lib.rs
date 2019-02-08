@@ -311,56 +311,45 @@
 
 #![deny(non_camel_case_types)]
 
-extern crate url;
 extern crate sha1;
+extern crate url;
 
-#[cfg(feature="with-rustc-json")]
+#[cfg(feature = "with-rustc-json")]
 pub extern crate rustc_serialize as serialize;
-#[cfg(feature="with-unix-sockets")]
+#[cfg(feature = "with-unix-sockets")]
 extern crate unix_socket;
 
 #[doc(hidden)]
-#[cfg(feature="with-rustc-json")]
+#[cfg(feature = "with-rustc-json")]
 pub use serialize::json::Json;
 
 // public api
-pub use parser::{parse_redis_value, Parser};
 pub use client::Client;
+pub use cmd::{cmd, pack_command, pipe, Cmd, Iter, Pipeline};
+pub use commands::{Commands, ControlFlow, PipelineCommands, PubSubCommands};
+pub use connection::{
+	parse_redis_url, transaction, Connection, ConnectionAddr, ConnectionInfo,
+	ConnectionLike, IntoConnectionInfo, Msg, PubSub,
+};
+pub use parser::{parse_redis_value, Parser};
 pub use script::{Script, ScriptInvocation};
-pub use connection::{Connection, ConnectionLike, ConnectionInfo, ConnectionAddr,
-                     IntoConnectionInfo, PubSub, Msg, transaction, parse_redis_url};
-pub use cmd::{cmd, Cmd, pipe, Pipeline, Iter, pack_command};
-pub use commands::{Commands, PipelineCommands, PubSubCommands, ControlFlow};
 
 pub use types::{
-    /* low level values */
-    Value,
-
-    /* error and result types */
-    RedisError,
-    RedisResult,
-
-    /* error kinds */
-    ErrorKind,
-
-    /* utility types */
-    InfoDict,
-    NumericBehavior,
-
-    /* conversion traits */
-    FromRedisValue,
-    ToRedisArgs,
-
-    /* utility functions */
-    from_redis_value,
+	/* utility functions */
+	from_redis_value, /* error kinds */
+	ErrorKind, /* conversion traits */
+	FromRedisValue, /* utility types */
+	InfoDict, NumericBehavior, /* error and result types */
+	RedisError, RedisResult, ToRedisArgs, /* low level values */
+	Value,
 };
 
 mod macros;
 
-mod parser;
 mod client;
-mod connection;
-mod types;
-mod script;
 mod cmd;
 mod commands;
+mod connection;
+mod parser;
+mod script;
+mod types;

@@ -1,11 +1,12 @@
-use connection::{ConnectionInfo, IntoConnectionInfo, Connection, connect, ConnectionLike};
+use connection::{
+	connect, Connection, ConnectionInfo, ConnectionLike, IntoConnectionInfo,
+};
 use types::{RedisResult, Value};
-
 
 /// The client type.
 #[derive(Debug, Clone)]
 pub struct Client {
-    connection_info: ConnectionInfo,
+	connection_info: ConnectionInfo,
 }
 
 /// The client acts as connector to the redis server.  By itself it does not
@@ -25,37 +26,38 @@ pub struct Client {
 /// let con = client.get_connection().unwrap();
 /// ```
 impl Client {
-    /// Connects to a redis server and returns a client.  This does not
-    /// actually open a connection yet but it does perform some basic
-    /// checks on the URL that might make the operation fail.
-    pub fn open<T: IntoConnectionInfo>(params: T) -> RedisResult<Client> {
-        Ok(Client { connection_info: try!(params.into_connection_info()) })
-    }
+	/// Connects to a redis server and returns a client.  This does not
+	/// actually open a connection yet but it does perform some basic
+	/// checks on the URL that might make the operation fail.
+	pub fn open<T: IntoConnectionInfo>(params: T) -> RedisResult<Client> {
+		Ok(Client { connection_info: params.into_connection_info()? })
+	}
 
-    /// Instructs the client to actually connect to redis and returns a
-    /// connection object.  The connection object can be used to send
-    /// commands to the server.  This can fail with a variety of errors
-    /// (like unreachable host) so it's important that you handle those
-    /// errors.
-    pub fn get_connection(&self) -> RedisResult<Connection> {
-        Ok(try!(connect(&self.connection_info)))
-    }
+	/// Instructs the client to actually connect to redis and returns a
+	/// connection object.  The connection object can be used to send
+	/// commands to the server.  This can fail with a variety of errors
+	/// (like unreachable host) so it's important that you handle those
+	/// errors.
+	pub fn get_connection(&self) -> RedisResult<Connection> {
+		Ok(connect(&self.connection_info)?)
+	}
 }
 
 impl ConnectionLike for Client {
-    fn req_packed_command(&self, cmd: &[u8]) -> RedisResult<Value> {
-        try!(self.get_connection()).req_packed_command(cmd)
-    }
+	fn req_packed_command(&self, cmd: &[u8]) -> RedisResult<Value> {
+		self.get_connection()?.req_packed_command(cmd)
+	}
 
-    fn req_packed_commands(&self,
-                           cmd: &[u8],
-                           offset: usize,
-                           count: usize)
-                           -> RedisResult<Vec<Value>> {
-        try!(self.get_connection()).req_packed_commands(cmd, offset, count)
-    }
+	fn req_packed_commands(
+		&self,
+		cmd: &[u8],
+		offset: usize,
+		count: usize,
+	) -> RedisResult<Vec<Value>> {
+		self.get_connection()?.req_packed_commands(cmd, offset, count)
+	}
 
-    fn get_db(&self) -> i64 {
-        self.connection_info.db
-    }
+	fn get_db(&self) -> i64 {
+		self.connection_info.db
+	}
 }
