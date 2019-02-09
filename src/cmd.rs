@@ -43,12 +43,9 @@ impl<'a, T: FromRedisValue> Iterator for Iter<'a, T> {
 		// because with filtering an iterator it is possible that a whole
 		// chunk is not matching the pattern and thus yielding empty results.
 		loop {
-			match self.batch.pop() {
-				Some(v) => {
-					return Some(v);
-				}
-				None => {}
-			};
+			if let Some(v) = self.batch.pop() {
+				return Some(v);
+			}
 			if self.cursor == 0 {
 				return None;
 			}
@@ -94,7 +91,7 @@ fn countdigits(mut v: usize) -> usize {
 
 #[inline]
 fn bulklen(len: usize) -> usize {
-	return 1 + countdigits(len) + 2 + len + 2;
+	1 + countdigits(len) + 2 + len + 2
 }
 
 fn encode_command(args: &[Arg], cursor: u64) -> Vec<u8> {
@@ -110,14 +107,16 @@ fn encode_command(args: &[Arg], cursor: u64) -> Vec<u8> {
 	}
 
 	let mut cmd = Vec::with_capacity(totlen);
+	#[allow(clippy::write_with_newline)]
 	write!(cmd, "*{}\r\n", args.len()).unwrap();
 
 	{
 		let mut encode = |item: &[u8]| {
+			#[allow(clippy::write_with_newline)]
 			write!(cmd, "${}\r\n", item.len()).unwrap();
 			cmd.extend(item.iter());
-			cmd.push('\r' as u8);
-			cmd.push('\n' as u8);
+			cmd.push(b'\r');
+			cmd.push(b'\n');
 		};
 
 		for item in args.iter() {
@@ -285,15 +284,15 @@ impl Cmd {
 		let pcmd = self.get_packed_command();
 		let rv = con.req_packed_command(&pcmd)?;
 		let mut batch: Vec<T>;
-		let mut cursor = 0;
 
-		if rv.looks_like_cursor() {
+		let cursor = if rv.looks_like_cursor() {
 			let (next, b): (u64, Vec<T>) = from_redis_value(&rv)?;
 			batch = b;
-			cursor = next;
+			next
 		} else {
 			batch = from_redis_value(&rv)?;
-		}
+			0
+		};
 
 		batch.reverse();
 		Ok(Iter { batch, cursor, con, cmd: self.clone() })
@@ -313,7 +312,7 @@ impl Cmd {
 	/// ```
 	#[inline]
 	pub fn execute(&self, con: &ConnectionLike) {
-		let _: () = self.query(con).unwrap();
+		self.query::<()>(con).unwrap();
 	}
 }
 
@@ -470,7 +469,7 @@ impl Pipeline {
 		con: &ConnectionLike,
 	) -> RedisResult<T> {
 		from_redis_value(
-			&(if self.commands.len() == 0 {
+			&(if self.commands.is_empty() {
 				Value::Bulk(vec![])
 			} else if self.transaction_mode {
 				self.execute_transaction(con)?
@@ -492,7 +491,7 @@ impl Pipeline {
 	/// ```
 	#[inline]
 	pub fn execute(&self, con: &ConnectionLike) {
-		let _: () = self.query(con).unwrap();
+		self.query::<()>(con).unwrap();
 	}
 }
 
@@ -505,7 +504,7 @@ impl Pipeline {
 /// ```rust
 /// redis::cmd("PING");
 /// ```
-pub fn cmd<'a>(name: &'a str) -> Cmd {
+pub fn cmd(name: &str) -> Cmd {
 	let mut rv = Cmd::new();
 	rv.arg(name);
 	rv

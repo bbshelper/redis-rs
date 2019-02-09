@@ -129,9 +129,7 @@ fn url_to_unix_connection_info(url: Url) -> RedisResult<ConnectionInfo> {
 			))),
 			db: match url
 				.query_pairs()
-				.into_iter()
-				.filter(|&(ref key, _)| key == "db")
-				.next()
+				.find(|&(ref key, _)| key == "db")
 			{
 				Some((_, db)) => unwrap_or!(
 					db.parse::<i64>().ok(),
@@ -241,7 +239,7 @@ impl ActualConnection {
 					.reader
 					.get_mut()
 					.write_all(bytes)
-					.map_err(|e| RedisError::from(e));
+					.map_err(RedisError::from);
 				match res {
 					Err(e) => {
 						if e.is_connection_dropped() {
@@ -346,19 +344,13 @@ pub fn connect(connection_info: &ConnectionInfo) -> RedisResult<Connection> {
 		pubsub: Cell::new(false),
 	};
 
-	match connection_info.passwd {
-		Some(ref passwd) => {
-			match cmd("AUTH").arg(&**passwd).query::<Value>(&rv) {
-				Ok(Value::Okay) => {}
-				_ => {
-					fail!((
-						ErrorKind::AuthenticationFailed,
-						"Password authentication failed"
-					));
-				}
-			}
+	if let Some(ref passwd) = connection_info.passwd {
+		if cmd("AUTH").arg(&**passwd).query::<Value>(&rv).is_err() {
+			fail!((
+				ErrorKind::AuthenticationFailed,
+				"Password authentication failed"
+			));
 		}
-		None => {}
 	}
 
 	if connection_info.db != 0 {
@@ -447,7 +439,7 @@ impl Connection {
 		self.con.borrow().set_read_timeout(dur)
 	}
 
-	pub fn as_pubsub<'a>(&'a mut self) -> PubSub<'a> {
+	pub fn as_pubsub(&mut self) -> PubSub {
 		// NOTE: The pubsub flag is intentionally not raised at this time since running commands
 		// within the pubsub state should not try and exit from the pubsub state.
 		PubSub::new(self)
@@ -602,7 +594,7 @@ impl<'a> PubSub<'a> {
 		&mut self,
 		pchannel: T,
 	) -> RedisResult<()> {
-		let _: () = cmd("PSUBSCRIBE").arg(pchannel).query(self.con)?;
+		cmd("PSUBSCRIBE").arg(pchannel).query(self.con)?;
 		Ok(())
 	}
 
@@ -611,7 +603,7 @@ impl<'a> PubSub<'a> {
 		&mut self,
 		channel: T,
 	) -> RedisResult<()> {
-		let _: () = cmd("UNSUBSCRIBE").arg(channel).query(self.con)?;
+		cmd("UNSUBSCRIBE").arg(channel).query(self.con)?;
 		Ok(())
 	}
 
@@ -620,7 +612,7 @@ impl<'a> PubSub<'a> {
 		&mut self,
 		pchannel: T,
 	) -> RedisResult<()> {
-		let _: () = cmd("PUNSUBSCRIBE").arg(pchannel).query(self.con)?;
+		cmd("PUNSUBSCRIBE").arg(pchannel).query(self.con)?;
 		Ok(())
 	}
 
@@ -767,7 +759,7 @@ pub fn transaction<
 ) -> RedisResult<T> {
 	let mut func = func;
 	loop {
-		let _: () = cmd("WATCH").arg(keys).query(con)?;
+		cmd("WATCH").arg(keys).query(con)?;
 		let mut p = pipe();
 		let response: Option<T> = func(p.atomic())?;
 		match response {
@@ -777,7 +769,7 @@ pub fn transaction<
 			Some(response) => {
 				// make sure no watch is left in the connection, even if
 				// someone forgot to use the pipeline.
-				let _: () = cmd("UNWATCH").query(con)?;
+				cmd("UNWATCH").query(con)?;
 				return Ok(response);
 			}
 		}

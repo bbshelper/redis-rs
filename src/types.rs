@@ -94,10 +94,10 @@ impl Value {
 						return false;
 					}
 				}
-				return true;
+				true
 			}
 			_ => {
-				return false;
+				false
 			}
 		}
 	}
@@ -376,7 +376,7 @@ impl InfoDict {
 	pub fn new(kvpairs: &str) -> InfoDict {
 		let mut map = HashMap::new();
 		for line in kvpairs.lines() {
-			if line.len() == 0 || line.starts_with("#") {
+			if line.is_empty() || line.starts_with('#') {
 				continue;
 			}
 			let mut p = line.splitn(2, ':');
@@ -567,9 +567,8 @@ impl<'a, T: ToRedisArgs> ToRedisArgs for &'a [T] {
 
 impl<T: ToRedisArgs> ToRedisArgs for Option<T> {
 	fn write_redis_args(&self, out: &mut Vec<Vec<u8>>) {
-		match *self {
-			Some(ref x) => x.write_redis_args(out),
-			None => (),
+		if let Some(ref x) = *self {
+			x.write_redis_args(out);
 		}
 	}
 
@@ -719,9 +718,8 @@ pub trait FromRedisValue: Sized {
 	fn from_redis_values(items: &[Value]) -> RedisResult<Vec<Self>> {
 		let mut rv = vec![];
 		for item in items.iter() {
-			match FromRedisValue::from_redis_value(item) {
-				Ok(val) => rv.push(val),
-				Err(_) => {}
+			if let Ok(val) = FromRedisValue::from_redis_value(item) {
+				rv.push(val);
 			}
 		}
 		Ok(rv)
@@ -1008,11 +1006,8 @@ impl FromRedisValue for InfoDict {
 
 impl<T: FromRedisValue> FromRedisValue for Option<T> {
 	fn from_redis_value(v: &Value) -> RedisResult<Option<T>> {
-		match *v {
-			Value::Nil => {
-				return Ok(None);
-			}
-			_ => {}
+		if let Value::Nil = *v {
+			return Ok(None);
 		}
 		Ok(Some(from_redis_value(v)?))
 	}

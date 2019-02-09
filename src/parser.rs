@@ -105,7 +105,7 @@ impl<'a, T: Read> Parser<T> {
 		let mut i = 0;
 		while i < bytes {
 			let res_nread = {
-				let ref mut buf = &mut rv[i..];
+				let buf = &mut rv[i..];
 				self.reader.read(buf)
 			};
 			match res_nread {
